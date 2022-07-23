@@ -1,0 +1,2 @@
+add_subdirectory(a_catch)
+add_subdirectory(a_luau)
