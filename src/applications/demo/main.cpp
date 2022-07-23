@@ -38,12 +38,12 @@ std::string runCode(a_luau::State& state, const std::string& source) {
   if (status == 0) {
     int n = thread.gettop();
 
-    if (n) {
+    if (n != 0) {
       thread.checkstack(LUA_MINSTACK, "too many results to print");
       thread.getglobal("_PRETTYPRINT");
       // If _PRETTYPRINT is nil, then use the standard print function
       // instead
-      if (thread.isnil(-1)) {
+      if (thread.isnil(-1) != 0) {
         thread.pop(1);
         thread.getglobal("print");
       }
@@ -83,9 +83,8 @@ void empty() {
   std::cout << "Doing nothing.." << std::endl;
 }
 
-std::tuple<double, double> east()
-{
-    return {0.0, 1.0};
+std::tuple<double, double> east() {
+  return {0.0, 1.0};
 }
 
 int main(int argc, const char* argv[]) {

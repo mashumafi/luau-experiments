@@ -16,7 +16,7 @@ void noop(lua_State* state) {}
 
 int closure(lua_State* L) {
   State state(L);
-  auto f = state.touserdata<State::Closure>(lua_upvalueindex(1));
+  auto* f = state.touserdata<State::Closure>(lua_upvalueindex(1));
   return (*f)(state);
 }
 
@@ -138,8 +138,9 @@ void State::pushcclosure(const Closure& fn,
                          std::string_view debugname,
                          int nup) {
   newuserdatadtor<Closure>(gc_closure, fn);
-  if (nup > 1)
+  if (nup > 1) {
     insert(nup);
+  }
   lua_pushcclosure(m_state.get(), closure, debugname.data(), nup + 1);
 }
 
