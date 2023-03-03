@@ -66,6 +66,14 @@ double State::tonumber(int index) {
   return lua_tonumber(m_state.get(), index);
 }
 
+int State::isnumber(int index) {
+  return lua_isnumber(m_state.get(), index);
+}
+
+std::string State::get_typename(int index) {
+  return lua_typename(m_state.get(), index);
+}
+
 void State::pop(int n) {
   lua_pop(m_state.get(), n);
 }
@@ -194,6 +202,17 @@ void State::pushboolean(int b) {
 
 int State::gc_collect() {
   return lua_gc(m_state.get(), LUA_GCCOLLECT, 0);
+}
+
+template <>
+void tovalue(State& state, int index, double& result) {
+  result = state.tonumber(index);
+}
+
+template <>
+int pushvalue(State& state, const double& num) {
+  state.pushnumber(num);
+  return 1;
 }
 
 }  // namespace a_luau

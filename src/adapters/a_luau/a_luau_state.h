@@ -3,12 +3,102 @@
 
 #include <cstddef>
 #include <functional>
+#include <iostream>
 #include <memory>
 #include <string_view>
 
 struct lua_State;
 
 namespace a_luau {
+
+class State;
+
+// to value
+template <typename T>
+void tovalue(State& state, int index, T& result);
+
+template <size_t I = 0, typename... Ts>
+typename std::enable_if<I == sizeof...(Ts), void>::type
+tovalues(State& state, int index, std::tuple<Ts...>& tup) {
+  return;
+}
+
+template <size_t I = 0, typename... Ts>
+typename std::enable_if<(I < sizeof...(Ts)), void>::type
+tovalues(State& state, int index, std::tuple<Ts...>& tup) {
+  tovalue(state, index, std::get<I>(tup));
+  tovalues<I + 1>(state, index + 1, tup);
+}
+
+template <typename... Ts>
+void tovalue(State& state, int index, std::tuple<Ts...>& tup) {
+  tovalues(state, index, tup);
+}
+
+// count
+template <typename T>
+inline int countarg(const T& arg);
+
+template <>
+inline int countarg(const double& num) {
+  return 1;
+}
+
+template <size_t I = 0, typename... Ts>
+inline typename std::enable_if<I == sizeof...(Ts), int>::type countargs(
+    const std::tuple<Ts...>& tup) {
+  return 0;
+}
+
+template <size_t I = 0, typename... Ts>
+inline typename std::enable_if<(I < sizeof...(Ts)), int>::type countargs(
+    const std::tuple<Ts...>& tup) {
+  return countargs<I + 1>(tup) + countarg(std::get<I>(tup));
+}
+
+template <typename... T>
+inline int countarg(const std::tuple<T...>& tup) {
+  return countargs(tup);
+}
+
+// push value
+template <typename T>
+int pushvalue(State& state, const T& value);
+
+template <size_t I = 0, typename... Ts>
+typename std::enable_if<I == sizeof...(Ts), int>::type pushvalues(
+    State& state,
+    const std::tuple<Ts...>& tup) {
+  return 0;
+}
+
+template <size_t I = 0, typename... Ts>
+typename std::enable_if<(I < sizeof...(Ts)), int>::type pushvalues(
+    State& state,
+    const std::tuple<Ts...>& tup) {
+  pushvalue(state, std::get<I>(tup));
+  return pushvalues<I + 1>(state, tup) + 1;
+}
+
+template <typename... T>
+int pushvalue(State& state, const std::tuple<T...>& tup) {
+  return pushvalues(state, tup);
+}
+
+template <typename Res, typename... ArgTypes>
+int pushvalue(State& state,
+              const std::function<Res(ArgTypes...)>& fn,
+              const std::tuple<ArgTypes...>& args) {
+  return pushvalue(state, std::apply(fn, args));
+}
+
+template <typename... ArgTypes>
+int pushvalue(State& state,
+              const std::function<void(ArgTypes...)>& fn,
+              const std::tuple<ArgTypes...>& args) {
+  std::apply(fn, args);
+  return 0;
+}
 
 class State {
  public:
@@ -27,6 +117,9 @@ class State {
   const char* tolstring(int index, size_t* len);
   const char* tostring(int index);
   double tonumber(int index);
+  int isnumber(int index);
+
+  std::string get_typename(int index);
 
   void pop(int n);
   void pushvalue(int index);
@@ -43,6 +136,14 @@ class State {
   void pushnil();
   void pushnumber(double num);
 
+  template <class Ret, class... Args>
+  Ret call(Args... args) {
+    const int nargs = pushvalues(*this, std::tuple<Args...>(args...));
+    Ret result;
+    int status = pcall(nargs, countarg(result), 0);
+    tovalue(*this, -countarg(result), result);
+    return result;
+  }
   int pcall(int nargs, int nresults, int msgh);
 
   int getglobal(const char* name);
