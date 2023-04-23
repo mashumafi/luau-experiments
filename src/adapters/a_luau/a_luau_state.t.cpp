@@ -105,6 +105,7 @@ TEST_CASE("Test binding") {
   CHECK(std::get<1>(dir) == 1.0);
 
   state.getglobal("directions");
+  REQUIRE(a_luau::countargs<Directions> == 4);
   Directions dirs = state.call<Directions>();
   CHECK(std::get<0>(std::get<0>(dirs)) == 1.0);
   CHECK(std::get<1>(std::get<0>(dirs)) == 2.0);

@@ -36,30 +36,26 @@ void tovalue(State& state, int index, std::tuple<Ts...>& tup) {
 }
 
 // count
-template <typename T>
-inline int countarg(const T& arg);
+template <typename Tuple>
+struct CountArgs;
 
 template <>
-inline int countarg(const double& num) {
-  return 1;
-}
+struct CountArgs<std::tuple<>> {
+    static const size_t value = 0;
+};
 
-template <size_t I = 0, typename... Ts>
-inline typename std::enable_if<I == sizeof...(Ts), int>::type countargs(
-    const std::tuple<Ts...>& tup) {
-  return 0;
-}
+template <typename T, typename... Ts>
+struct CountArgs<std::tuple<T, Ts...>> {
+    static const size_t value = CountArgs<T>::value + CountArgs<std::tuple<Ts...>>::value;
+};
 
-template <size_t I = 0, typename... Ts>
-inline typename std::enable_if<(I < sizeof...(Ts)), int>::type countargs(
-    const std::tuple<Ts...>& tup) {
-  return countargs<I + 1>(tup) + countarg(std::get<I>(tup));
-}
+template <>
+struct CountArgs<double> {
+    static const size_t value = 1;
+};
 
-template <typename... T>
-inline int countarg(const std::tuple<T...>& tup) {
-  return countargs(tup);
-}
+template <typename T>
+size_t countargs = CountArgs<T>::value;
 
 // push value
 template <typename T>
@@ -140,8 +136,8 @@ class State {
   Ret call(Args... args) {
     const int nargs = pushvalues(*this, std::tuple<Args...>(args...));
     Ret result;
-    int status = pcall(nargs, countarg(result), 0);
-    tovalue(*this, -countarg(result), result);
+    int status = pcall(nargs, countargs<Ret>, 0);
+    tovalue(*this, -countargs<Ret>, result);
     return result;
   }
   int pcall(int nargs, int nresults, int msgh);
